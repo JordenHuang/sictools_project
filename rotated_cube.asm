@@ -10,6 +10,7 @@ rc	START	0
 	. STF	f_x
 	. JSUB	cos_func
 
+... test calculate_x function
 	LDF	#22
 	STF	f_cube_x
 	STF	f_cube_y
@@ -20,9 +21,44 @@ rc	START	0
 halt	J	halt
 
 
+... Note at 2024/03/09
+... need two matrices, storing colors and z values
+... initialize them to all black and all zero, like memset function in c
+
+... subrutine for calculate cube surface
+calculate_cube_surface	STL	temp_L
+			JSUB	calculate_sins_and_coss
+			JSUB	calculate_x	... it will read f_cube_{x, y, z}, and calc them
+			LDF	f_result
+			STF	f_coor_x	... calc f_coor_x's value
+			FIX
+			STA	int_coor_x	... store it to int_coor_x
+
+			JSUB	calculate_y
+			STF	f_coor_y	... calc f_coor_y's value
+
+			JSUB	calculate_z
+			STF	f_coor_z	... calc f_coor_z's value
+
+			LDF	f_coor_y
+			DIVF	#2
+			FIX			... turn f_coor_y into int y
+			STA	int_coor_y	... store it to int_coor_y
+
+			LDA	#22
+			SUB	int_coor_y
+			MUL	screen_cols
+			ADD	original_point_x
+			ADD	int_coor_x	... position = (22-y)*100 + 50-(-x);
+
+			LDL	temp_L
+			... Continue here ...
+			RSUB
+
+
 
 ... subrutine for calculate sins and coss to f_angle_{a, b, c}
-calculate_sins_and_coss	STL	@temp_L		... store L to temp_L
+calculate_sins_and_coss	STL	temp_L		... store L to temp_L
 			... sins
 			LDF	f_angle_a
 			STF	f_x
@@ -61,7 +97,7 @@ calculate_sins_and_coss	STL	@temp_L		... store L to temp_L
 			LDF	f_result
 			STF	cos_f_angle_c	... store it to sin_f_angle_c
 
-			LDL	@temp_L		... put temp_L to register L
+			LDL	temp_L		... put temp_L to register L
 			RSUB
 
 
@@ -216,6 +252,18 @@ variable_init	CLEAR	A
 
 		DIVF	#5
 		STF	f_rotate_speed_for_z
+
+		... set cube width to 28
+		LDF	#28
+		STF	f_cube_width
+
+		... set original_point_{x, y} to half screen width and column
+		LDA	screen_rows
+		DIV	#2
+		STA	original_point_x
+		LDA	screen_cols
+		DIV	#2
+		STA	original_point_y
 		RSUB
 
 
@@ -226,8 +274,16 @@ screen_start	WORD	X'00A000'
 screen_rows	WORD	64
 screen_cols	WORD	64
 
-... 
-. check_front_symbols	RESW	64
+
+original_point_x	RESW	1
+original_point_y	RESW	1
+
+... matrices for colors and front pos
+colors			RESB	4096
+... the type is float
+... WARNING: the matrix below might need to add
+... 4 when indexing
+f_check_front_pos	RESF	4096
 
 ... colors
 bg_color	WORD	X'00'	... color black
@@ -240,9 +296,15 @@ d_color		WORD	X'FC'	... color yellow
 
 position	WORD	1
 
-temp_L		WORD	1
+temp_L		RESW	1
+
+int_coor_x	RESW	1
+int_coor_y	RESW	1
+int_coor_z	RESW	1
 
 ... float number part
+f_cube_width	RESF	1
+
 f_cube_x	RESF	1
 f_cube_y	RESF	1
 f_cube_z	RESF	1

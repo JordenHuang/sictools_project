@@ -1,7 +1,12 @@
+... Note at 2024/03/09
+... need two matrices, storing colors and z values
+... initialize them to all black and all zero, like memset function in c
 
 ... rc for rotated cube
 rc	START	0
 	JSUB	variable_init
+
+	JSUB	main
 
 ... test cos function
 	. LDA	#314
@@ -11,19 +16,41 @@ rc	START	0
 	. JSUB	cos_func
 
 ... test calculate_x function
-	LDF	#22
-	STF	f_cube_x
-	STF	f_cube_y
-	STF	f_cube_z
-	JSUB	calculate_sins_and_coss
-	JSUB	calculate_x
+	. LDF	#22
+	. STF	f_cube_x
+	. STF	f_cube_y
+	. STF	f_cube_z
+	. JSUB	calculate_sins_and_coss
+	. JSUB	calculate_x
 
 halt	J	halt
 
 
-... Note at 2024/03/09
-... need two matrices, storing colors and z values
-... initialize them to all black and all zero, like memset function in c
+main	STL	temp_L
+	JSUB	memset_colors
+	JSUB	memset_f_ch_fnt_pos
+
+
+
+
+... colors memset subrutine
+memset_colors		LDX	#0
+			LDS	bg_color
+			STS	colors, X
+			TIX	#4095
+			JLT	memset_colors
+			RSUB
+
+... f_check_front_pos memset subrutine
+memset_f_ch_fnt_pos	LDX	#0
+			LDF	#0
+			STF	f_check_front_pos, X
+			LDA	#4
+			ADDR	A, X
+			COMP	#4095
+			JLT	memset_f_ch_fnt_pos
+			RSUB
+
 
 ... subrutine for calculate cube surface
 calculate_cube_surface	STL	temp_L
@@ -45,14 +72,31 @@ calculate_cube_surface	STL	temp_L
 			FIX			... turn f_coor_y into int y
 			STA	int_coor_y	... store it to int_coor_y
 
-			LDA	#22
+			LDA	original_point_y
 			SUB	int_coor_y
 			MUL	screen_cols
 			ADD	original_point_x
 			ADD	int_coor_x	... position = (22-y)*100 + 50-(-x);
 
+			... Continue here (3/10) ...
+			STA	position
+			LDX	position
+			LDB	#4
+			MULR	B, X		... multiply 4 because f_check_front_pos's type is float
+			LDA	f_check_front_pos, X
+			COMP	#0		... if (check_front_symbols[position]==0)
+			JEQ	equal_zero_or_greater_z
+			COMP	f_coor_z	... else (check_front_symbols[position] > z)
+			JGT	equal_zero_or_greater_z
+			J	calculate_cube_surface_return
+equal_zero_or_greater_z	LDS	f_coor_z
+			STS	f_check_front_pos, X
+			DIVR	B, X		... divide 4 because colors matrix is type byte
+			LDS	cur_color
+			STS	colors, X	... write color to colors matrix
+			J	calculate_cube_surface_return
+calculate_cube_surface_return
 			LDL	temp_L
-			... Continue here ...
 			RSUB
 
 
@@ -260,30 +304,19 @@ variable_init	CLEAR	A
 		... set original_point_{x, y} to half screen width and column
 		LDA	screen_rows
 		DIV	#2
-		STA	original_point_x
+		STA	original_point_y
 		LDA	screen_cols
 		DIV	#2
-		STA	original_point_y
+		STA	original_point_x
 		RSUB
 
 
 ......
-... Variables
+... Constants
 ......
 screen_start	WORD	X'00A000'
 screen_rows	WORD	64
 screen_cols	WORD	64
-
-
-original_point_x	RESW	1
-original_point_y	RESW	1
-
-... matrices for colors and front pos
-colors			RESB	4096
-... the type is float
-... WARNING: the matrix below might need to add
-... 4 when indexing
-f_check_front_pos	RESF	4096
 
 ... colors
 bg_color	WORD	X'00'	... color black
@@ -294,7 +327,25 @@ l_color		WORD	X'F8'	... color orange
 u_color		WORD	X'FF'	... color white
 d_color		WORD	X'FC'	... color yellow
 
-position	WORD	1
+
+
+......
+... Variables
+......
+original_point_x	RESW	1
+original_point_y	RESW	1
+
+position		RESW	1
+
+cur_color		RESW	1
+
+... matrices for colors and front pos
+colors			RESB	4096
+... the type is float
+... WARNING: this matrix might need to add
+... 4 when indexing
+f_check_front_pos	RESF	4096
+
 
 temp_L		RESW	1
 

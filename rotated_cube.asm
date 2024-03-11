@@ -6,9 +6,9 @@
 ... sin, cos, calculate_sins_and_cos are correct
 ... memset_colors, memset_f_ch_fnt_pos are correct
 ... write_to_screen is correct
-... TODO: the angle can't be greater than 360, need to shrink them
-... try: 大於360就減360
-... TODO: maybe need a temp_f_cube_{x, y, z} to easy swap those value to calculate the surface?
+...  the angle can't be greater than 360, need to shrink them
+... try: 大於360就減360(3.14), -3.14 ~ 3.14
+...  maybe need a temp_f_cube_{x, y, z} to easy swap those value to calculate the surface?
 
 ... rc for rotated cube
 rc	START	0
@@ -41,60 +41,125 @@ main		STL	temp_L_3
 main_n		JSUB	memset_colors
 		JSUB	memset_f_ch_fnt_pos
 
-double_loop	LDF	f_cube_width
+double_loop	LDF	f_half_cube_width
 		MULF	f_negative_one
-		DIVF	#2
-outer_loop	STF	f_cube_y	... f_cube_y's value
-inner_loop	STF	f_cube_x
+		STF	fy		... fx and fy is used as loop variables
+outer_loop	LDF	f_half_cube_width
+		MULF	f_negative_one
+		STF	fx
+inner_loop	LDF	fx
+		STF	f_cube_x
+		LDF	fy
+		STF	f_cube_y	... f_cube_y's value
+		LDF	f_half_cube_width
+		MULF	f_negative_one
 		STF	f_cube_z
 		LDA	f_color		... f side cube color
 		STA	cur_color
 		JSUB	calculate_cube_surface	... f side cube
 
-		. LDF	f_cube_z
-		. MULF	f_negative_one
-		. STF	f_cube_z
-		. LDA	b_color		... b side cube color
-		. STA	cur_color
-		. JSUB	calculate_cube_surface	... b side cube
-
-		LDF	f_cube_z
-		STF	f_temp
-		LDF	f_cube_x
-		STF	f_cube_z
-		LDF	f_temp
+		LDF	fx
 		STF	f_cube_x
-		LDA	l_color
+		LDF	fy
+		STF	f_cube_y
+		LDF	f_half_cube_width
+		STF	f_cube_z
+		LDA	b_color		... b side cube color
+		STA	cur_color
+		JSUB	calculate_cube_surface	... b side cube
+
+		LDF	f_half_cube_width
+		MULF	f_negative_one
+		STF	f_cube_x
+		LDF	fy
+		STF	f_cube_y
+		LDF	fx
+		STF	f_cube_z
+		LDA	l_color		... l side color
 		STA	cur_color
 		JSUB	calculate_cube_surface	... l side cube
 
+		LDF	f_half_cube_width
+		STF	f_cube_x
+		LDF	fy
+		STF	f_cube_y
+		LDF	fx
+		STF	f_cube_z
+		LDA	r_color		... r side color
+		STA	cur_color
+		JSUB	calculate_cube_surface	... r side cube
+
+		LDF	fx
+		STF	f_cube_x
+		LDF	f_half_cube_width
+		MULF	f_negative_one
+		STF	f_cube_y
+		LDF	fy
+		STF	f_cube_z
+		LDA	d_color		... d side color
+		STA	cur_color
+		JSUB	calculate_cube_surface	... d side cube
+
+		LDF	fx
+		STF	f_cube_x
+		LDF	f_half_cube_width
+		STF	f_cube_y
+		LDF	fy
+		STF	f_cube_z
+		LDA	u_color		... u side color
+		STA	cur_color
+		JSUB	calculate_cube_surface	... u side cube
+
 		LDF	#5
 		DIVF	#10
-		ADDF	f_cube_x
-		STF	f_cube_x		... cube_x += 0.5
-		COMPF	f_inner_loop_condition	... cube_x <= cube_width/2
+		ADDF	fx
+		STF	fx		... f_x += 0.5
+		COMPF	f_inner_loop_condition	... f_x <= cube_width/2
 		JLT	inner_loop
 
 		LDF	#5
 		DIVF	#10
-		ADDF	f_cube_y
-		STF	f_cube_y		... cube_y += 0.5
-		COMPF	f_outer_loop_condition	... cube_y <= cube_width/2 
+		ADDF	fy
+		STF	fy		... fy += 0.5
+		COMPF	f_outer_loop_condition	... fy <= cube_width/2 
 		JLT	outer_loop
 		JSUB	write_to_screen
 
 		... add angle to rotate
-		LDF	f_rotate_speed_for_x
+a_check		LDF	f_rotate_speed_for_x
 		ADDF	f_angle_a
+		COMPF	pi
+		JGT	a_turn_nega
 		STF	f_angle_a
-		LDF	f_rotate_speed_for_y
-		ADDF	f_angle_b
-		STF	f_angle_b
-		LDF	f_rotate_speed_for_z
-		ADDF	f_angle_c
-		STF	f_angle_c
+		J	b_check
+a_turn_nega	MULF	f_negative_one
+. a_turn_nega	SUBF	pi
+. 		SUBF	pi
+		STF	f_angle_a
 
+b_check		LDF	f_rotate_speed_for_y
+		ADDF	f_angle_b
+		COMPF	pi
+		JGT	b_turn_nega
+		STF	f_angle_b
+		J	c_check
+b_turn_nega	MULF	f_negative_one
+. b_turn_nega	SUBF	pi
+. 		SUBF	pi
+		STF	f_angle_b
+
+c_check		LDF	f_rotate_speed_for_z
+		ADDF	f_angle_c
+		COMPF	pi
+		JGT	c_turn_nega
+		STF	f_angle_c
 		J	main_n
+c_turn_nega	MULF	f_negative_one
+. c_turn_nega	SUBF	pi
+. 		SUBF	pi
+		STF	f_angle_c
+		J	main_n
+
 
 write_to_screen	STL	temp_L_4
 		LDX	#0
@@ -142,10 +207,7 @@ calculate_cube_surface	STL	temp_L_2
 			JSUB	calculate_x	... it will read f_cube_{x, y, z}, and calc them
 			LDF	f_result
 			STF	f_coor_x	... calc f_coor_x's value
-			... check if it's negative float
-			. JSUB	turn_positive_f
 			FIX
-			. JSUB	turn_negative_i
 			STA	int_coor_x	... store it to int_coor_x
 
 			JSUB	calculate_y
@@ -155,16 +217,11 @@ calculate_cube_surface	STL	temp_L_2
 			JSUB	calculate_z
 			LDF	f_result
 			STF	f_coor_z	... calc f_coor_z's value
-			. JSUB	turn_positive_f
 			FIX
-			. JSUB	turn_negative_i
 			STA	int_coor_z	... store it to int_coor_z
 
 			LDF	f_coor_y
-			. DIVF	#2
-			. JSUB	turn_positive_f
 			FIX
-			. JSUB	turn_negative_i
 			STA	int_coor_y	... store it to int_coor_y
 
 			LDA	original_point_y
@@ -176,20 +233,20 @@ calculate_cube_surface	STL	temp_L_2
 			... Continue here (3/10) ...
 			STA	position
 			LDX	position
-			. LDB	#6
-			. MULR	B, X		... multiply 4 because f_check_front_pos's type is float
-			LDA	f_check_front_pos, X
-			COMP	#0		... if (check_front_symbols[position]==0)
+			LDT	#6
+			MULR	T, X		... multiply 6 because f_check_front_pos's type is float
+			LDF	f_check_front_pos, X
+			COMPF	#0		... if (check_front_symbols[position]==0)
 			JEQ	equal_zero_or_greater_z
-			COMP	f_coor_z	... else (check_front_symbols[position] > z)
+			COMPF	f_coor_z	... else (check_front_symbols[position] > z)
 			JGT	equal_zero_or_greater_z
 			J	calculate_cube_surface_return
-equal_zero_or_greater_z	LDS	f_coor_z
-			LDT	#6
-			MULR	T, X
-			STS	f_check_front_pos, X
+equal_zero_or_greater_z	LDF	f_coor_z
+			. LDT	#6
+			. MULR	T, X
+			STF	f_check_front_pos, X
 			. SUBR	T, X
-			. DIVR	B, X		... divide 4 because colors matrix is type word
+			. DIVR	B, X		... divide 6 because colors matrix is type byte
 			. LDX	#0
 			DIVR	T, X
 ccc			LDS	cur_color
@@ -199,17 +256,6 @@ calculate_cube_surface_return
 			LDL	temp_L_2
 			RSUB
 
-... turn floating number to positive
-turn_positive_f	COMPF	#0
-		JGT	no_turn_f
-		MULF	f_negative_one
-no_turn_f	RSUB
-
-... turn integer number to negative
-turn_negative_i	COMP	#0
-		JLT	no_turn_i
-		MUL	int_negative_one
-no_turn_i	RSUB
 
 
 ... subrutine for calculate sins and coss to f_angle_{a, b, c}
@@ -393,13 +439,19 @@ cos_func	LDF	f_x
 
 variable_init	CLEAR	A
 		FLOAT
-		... set angle_* to 0
-		STF	f_angle_a
-		STF	f_angle_b
-		STF	f_angle_c
 		... create a floating negative 1
 		SUBF	#1
 		STF	f_negative_one
+		... create a pi
+		LDF	#314
+		DIVF	#100
+		STF	pi
+		... set angle_* to negative pi
+		MULF	f_negative_one
+		STF	f_angle_a
+		STF	f_angle_b
+		STF	f_angle_c
+
 
 		... set rotate_speed to
 		... 0.05, 0.05, 0.01
@@ -412,9 +464,11 @@ variable_init	CLEAR	A
 		DIVF	#5
 		STF	f_rotate_speed_for_z
 
-		... set cube width to 28
+		... set cube width to 20
 		LDF	#20
 		STF	f_cube_width
+		DIVF	#2
+		STF	f_half_cube_width
 
 		... set original_point_{x, y} to half screen width and column
 		LDA	screen_rows
@@ -452,6 +506,7 @@ l_color		WORD	X'F8'	... color orange
 u_color		WORD	X'FF'	... color white
 d_color		WORD	X'FC'	... color yellow
 
+int_negative_one	WORD	-1
 
 
 ......
@@ -464,7 +519,6 @@ position		RESW	1
 
 cur_color		RESW	1
 
-int_negative_one	WORD	-1
 
 .. matrices for colors and front pos
 colors			RESB	4096
@@ -484,12 +538,20 @@ int_coor_x	RESW	1
 int_coor_y	RESW	1
 int_coor_z	RESW	1
 
+......
 ... float number part
-f_cube_width	RESF	1
+......
+f_cube_width		RESF	1
+f_half_cube_width	RESF	1
+
+pi		RESF	1
 
 f_rotate_speed_for_x	RESF	1
 f_rotate_speed_for_y	RESF	1
 f_rotate_speed_for_z	RESF	1
+
+fx		RESF	1
+fy		RESF	1
 
 ... coordinate for calculating cube surface
 f_cube_x	RESF	1

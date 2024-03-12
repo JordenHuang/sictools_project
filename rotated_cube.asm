@@ -10,6 +10,10 @@
 ... try: 大於360就減360(3.14), -3.14 ~ 3.14
 ...  maybe need a temp_f_cube_{x, y, z} to easy swap those value to calculate the surface?
 
+... Note at 2024/03/11
+... TODO: maybe calculate_sins_and_coss can be called only once in main_n, rather than each calculate surface
+... TODO: make sin and cos more accurate
+
 ... rc for rotated cube
 rc	START	0
 	JSUB	variable_init
@@ -40,6 +44,7 @@ halt	J	halt
 main		STL	temp_L_3
 main_n		JSUB	memset_colors
 		JSUB	memset_f_ch_fnt_pos
+			JSUB	calculate_sins_and_coss
 
 double_loop	LDF	f_half_cube_width
 		MULF	f_negative_one
@@ -116,6 +121,7 @@ inner_loop	LDF	fx
 		STF	fx		... f_x += 0.5
 		COMPF	f_inner_loop_condition	... f_x <= cube_width/2
 		JLT	inner_loop
+		JEQ	inner_loop
 
 		LDF	#5
 		DIVF	#10
@@ -123,54 +129,57 @@ inner_loop	LDF	fx
 		STF	fy		... fy += 0.5
 		COMPF	f_outer_loop_condition	... fy <= cube_width/2 
 		JLT	outer_loop
+		JEQ	outer_loop
 		JSUB	write_to_screen
 
 		... add angle to rotate
 a_check		LDF	f_rotate_speed_for_x
 		ADDF	f_angle_a
 		COMPF	pi
-		JGT	a_turn_nega
+		JGT	a_chk_in_range
+		JEQ	a_chk_in_range
 		STF	f_angle_a
 		J	b_check
-a_turn_nega	MULF	f_negative_one
-. a_turn_nega	SUBF	pi
-. 		SUBF	pi
+. a_turn_nega	MULF	f_negative_one
+a_chk_in_range 	SUBF	pi
+		SUBF	pi
 		STF	f_angle_a
 
 b_check		LDF	f_rotate_speed_for_y
 		ADDF	f_angle_b
 		COMPF	pi
-		JGT	b_turn_nega
+		JGT	b_chk_in_range
+		JEQ	b_chk_in_range
 		STF	f_angle_b
 		J	c_check
-b_turn_nega	MULF	f_negative_one
-. b_turn_nega	SUBF	pi
-. 		SUBF	pi
+. b_chk_in_range	MULF	f_negative_one
+b_chk_in_range	SUBF	pi
+		SUBF	pi
 		STF	f_angle_b
 
 c_check		LDF	f_rotate_speed_for_z
 		ADDF	f_angle_c
 		COMPF	pi
-		JGT	c_turn_nega
+		JGT	c_chk_in_range
+		JEQ	c_chk_in_range
 		STF	f_angle_c
 		J	main_n
-c_turn_nega	MULF	f_negative_one
-. c_turn_nega	SUBF	pi
-. 		SUBF	pi
+. c_turn_nega	MULF	f_negative_one
+c_chk_in_range	SUBF	pi
+		SUBF	pi
 		STF	f_angle_c
 		J	main_n
 
 
 write_to_screen	STL	temp_L_4
 		LDX	#0
-		LDS	#4095
-wts_for		LDB	screen_start
+		+LDS	#4096
+wts_for		LDT	screen_start
 		LDA	colors, X	... load the color to write
-		ADDR	X, B
-		STB	position
+		ADDR	X, T
+		STT	position
 		STCH	@position
 
-		. COMPR	X, S
 		TIXR	S
 		JLT	wts_for
 
@@ -182,18 +191,18 @@ wts_for		LDB	screen_start
 memset_colors		LDX	#0
 mc_for			LDS	bg_color
 			STS	colors, X
-			TIX	#4095	... but the last (4095) will not be set
+			+TIX	#4096
 			JLT	mc_for
 			RSUB
 
 ... f_check_front_pos memset subrutine
 memset_f_ch_fnt_pos	LDX	#0
-			LDB	#6
+			LDT	#6
 			LDA	#0
-			LDS	#4095	... but the last (4095) will not be set
-mfcfp_for		LDF	#0
-			STF	f_check_front_pos, X
-			ADDR	B, X
+			+LDS	#4096
+			LDF	#0
+mfcfp_for		STF	f_check_front_pos, X
+			ADDR	T, X
 			ADD	#1
 
 			COMPR	A, S
@@ -203,7 +212,6 @@ mfcfp_for		LDF	#0
 
 ... subrutine for calculate cube surface
 calculate_cube_surface	STL	temp_L_2
-			JSUB	calculate_sins_and_coss
 			JSUB	calculate_x	... it will read f_cube_{x, y, z}, and calc them
 			LDF	f_result
 			STF	f_coor_x	... calc f_coor_x's value
@@ -213,6 +221,8 @@ calculate_cube_surface	STL	temp_L_2
 			JSUB	calculate_y
 			LDF	f_result
 			STF	f_coor_y	... calc f_coor_y's value
+			FIX
+			STA	int_coor_y	... store it to int_coor_y
 
 			JSUB	calculate_z
 			LDF	f_result
@@ -220,9 +230,6 @@ calculate_cube_surface	STL	temp_L_2
 			FIX
 			STA	int_coor_z	... store it to int_coor_z
 
-			LDF	f_coor_y
-			FIX
-			STA	int_coor_y	... store it to int_coor_y
 
 			LDA	original_point_y
 			SUB	int_coor_y
@@ -241,6 +248,7 @@ calculate_cube_surface	STL	temp_L_2
 			COMPF	f_coor_z	... else (check_front_symbols[position] > z)
 			JGT	equal_zero_or_greater_z
 			J	calculate_cube_surface_return
+			. J	ccc	... only for test
 equal_zero_or_greater_z	LDF	f_coor_z
 			. LDT	#6
 			. MULR	T, X
@@ -248,8 +256,9 @@ equal_zero_or_greater_z	LDF	f_coor_z
 			. SUBR	T, X
 			. DIVR	B, X		... divide 6 because colors matrix is type byte
 			. LDX	#0
-			DIVR	T, X
-ccc			LDS	cur_color
+			. DIVR	T, X
+ccc			LDX	position
+			LDS	cur_color
 			STS	colors, X	... write color to colors matrix
 			. J	calculate_cube_surface_return
 calculate_cube_surface_return
@@ -394,14 +403,41 @@ sin_func	LDF	f_x
 		DIVF	#6
 		STF	f_term_2	... f_term_2 = (f_x ^ 3) / (3!)
 		LDF	f_temp
-		MULF	f_sqare_x	... F = F = f_x ^ 5
+		MULF	f_sqare_x	... F = f_x ^ 5
+		STF	f_temp		... f_temp = f_x ^ 5
 		DIVF	#120
-		. DIVF	#7		... 720 * 7 = 7!
 		STF	f_term_3	... f_term_3 = (f_x ^ 5) / (5!)
+		LDF	f_temp
+		MULF	f_sqare_x	... F = f_x ^ 7
+		STF	f_temp
+		+DIVF	#5040		... 5040 = 7!
+		STF	f_term_4	... f_term_4 = (f_x ^ 7) / (7!)
+		LDF	f_temp
+		MULF	f_sqare_x
+		STF	f_temp		... f_temp = f_x ^ 9
+		+DIVF	#362880		... 362880 = 9!
+		STF	f_term_5	... f_term_5 = (f_x ^ 9) / (9!)
+		LDF	f_temp
+		MULF	f_sqare_x
+		STF	f_temp		... f_temp = f_x ^ 11
+		+DIVF	#362880
+		DIVF	#110		... 362880 * 110 = 11!
+		STF	f_term_6	... f_term_6 = (f_x ^ 11) / (11!)
+		LDF	f_temp
+		MULF	f_sqare_x
+		STF	f_temp		... f_temp = f_x ^ 13
+		+DIVF	#362880
+		DIVF	#110
+		DIVF	#156		... 11! * 12 * 13 = 13!
+		STF	f_term_7	... f_term_7 = (f_x ^ 13) / (13!)
 
 		LDF	f_x
 		SUBF	f_term_2
 		ADDF	f_term_3
+		SUBF	f_term_4
+		ADDF	f_term_5
+		SUBF	f_term_6
+		ADDF	f_term_7
 		STF	f_result	... store the result to f_result
 		RSUB
 
@@ -422,15 +458,31 @@ cos_func	LDF	f_x
 		STF	f_term_4	... f_term_4 = (f_x ^ 6) / (6!)
 		LDF	f_temp
 		MULF	f_sqare_x	... F = f_x ^ 8
+		STF	f_temp		... f_temp = f_x ^ 8
 		DIVF	#720
 		DIVF	#56		... 720 * 56 = 8!
 		STF	f_term_5	... f_term_5 = (f_x ^ 8) / (8!)
+		LDF	f_temp
+		MULF	f_sqare_x
+		STF	f_temp		... f_temp = f_x ^ 10
+		+DIVF	#40320
+		DIVF	#90		... 40320 * 90 = 10!
+		STF	f_term_6	... f_term_6 = (f_x ^ 10) / (10!)
+		LDF	f_temp
+		MULF	f_sqare_x
+		STF	f_temp		... f_temp = f_x ^ 12
+		+DIVF	#40320
+		DIVF	#90
+		DIVF	#132		... 10! * 11 * 12 = 12!
+		STF	f_term_7	... f_term_7 = (f_x ^ 12) / (12!)
 
 		LDF	#1
 		SUBF	f_term_2
 		ADDF	f_term_3
 		SUBF	f_term_4
 		ADDF	f_term_5
+		SUBF	f_term_6
+		ADDF	f_term_7
 		STF	f_result	... store the result to f_result
 		RSUB
 
@@ -446,8 +498,8 @@ variable_init	CLEAR	A
 		LDF	#314
 		DIVF	#100
 		STF	pi
-		... set angle_* to negative pi
-		MULF	f_negative_one
+		.. set angle_* to negative pi
+		. MULF	f_negative_one
 		STF	f_angle_a
 		STF	f_angle_b
 		STF	f_angle_c
@@ -456,6 +508,7 @@ variable_init	CLEAR	A
 		... set rotate_speed to
 		... 0.05, 0.05, 0.01
 		... to f_rotate_speed_for_{x, y, z}
+		LDF	#0
 		LDF	#5
 		DIVF	#100
 		STF	f_rotate_speed_for_x
@@ -465,7 +518,7 @@ variable_init	CLEAR	A
 		STF	f_rotate_speed_for_z
 
 		... set cube width to 20
-		LDF	#20
+		LDF	#28
 		STF	f_cube_width
 		DIVF	#2
 		STF	f_half_cube_width
@@ -594,6 +647,8 @@ f_term_2	RESF	1	... 多項式第二項
 f_term_3	RESF	1	... 多項式第三項
 f_term_4	RESF	1	... 多項式第四項
 f_term_5	RESF	1	... 多項式第五項
+f_term_6	RESF	1	... 多項式第六項
+f_term_7	RESF	1	... 多項式第七項
 f_result	RESF	1
 
 f_outer_loop_condition	RESF	1

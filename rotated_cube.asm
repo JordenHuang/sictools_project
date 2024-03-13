@@ -59,8 +59,9 @@ inner_loop	LDF	fx
 		LDF	f_half_cube_width
 		MULF	f_negative_one
 		STF	f_cube_z
-		LDA	f_color		... f side cube color
-		STA	cur_color
+		. CLEAR	A
+		LDCH	f_color		... f side cube color
+		STCH	cur_color
 		JSUB	calculate_cube_surface	... f side cube
 
 		LDF	fx
@@ -69,8 +70,9 @@ inner_loop	LDF	fx
 		STF	f_cube_y
 		LDF	f_half_cube_width
 		STF	f_cube_z
-		LDA	b_color		... b side cube color
-		STA	cur_color
+		. CLEAR	A
+		LDCH	b_color		... b side cube color
+		STCH	cur_color
 		JSUB	calculate_cube_surface	... b side cube
 
 		LDF	f_half_cube_width
@@ -80,8 +82,9 @@ inner_loop	LDF	fx
 		STF	f_cube_y
 		LDF	fx
 		STF	f_cube_z
-		LDA	l_color		... l side color
-		STA	cur_color
+		. CLEAR	A
+		LDCH	l_color		... l side color
+		STCH	cur_color
 		JSUB	calculate_cube_surface	... l side cube
 
 		LDF	f_half_cube_width
@@ -90,8 +93,9 @@ inner_loop	LDF	fx
 		STF	f_cube_y
 		LDF	fx
 		STF	f_cube_z
-		LDA	r_color		... r side color
-		STA	cur_color
+		. CLEAR	A
+		LDCH	r_color		... r side color
+		STCH	cur_color
 		JSUB	calculate_cube_surface	... r side cube
 
 		LDF	fx
@@ -101,8 +105,9 @@ inner_loop	LDF	fx
 		STF	f_cube_y
 		LDF	fy
 		STF	f_cube_z
-		LDA	d_color		... d side color
-		STA	cur_color
+		. CLEAR	A
+		LDCH	d_color		... d side color
+		STCH	cur_color
 		JSUB	calculate_cube_surface	... d side cube
 
 		LDF	fx
@@ -111,8 +116,9 @@ inner_loop	LDF	fx
 		STF	f_cube_y
 		LDF	fy
 		STF	f_cube_z
-		LDA	u_color		... u side color
-		STA	cur_color
+		. CLEAR	A
+		LDCH	u_color		... u side color
+		STCH	cur_color
 		JSUB	calculate_cube_surface	... u side cube
 
 		LDF	#5
@@ -175,7 +181,9 @@ write_to_screen	STL	temp_L_4
 		LDX	#0
 		+LDS	#4096
 wts_for		LDT	screen_start
-		LDA	colors, X	... load the color to write
+		. CLEAR	A
+		LDCH	colors, X	... load the color to write
+		. LDCH	f_color
 		ADDR	X, T
 		STT	position
 		STCH	@position
@@ -189,8 +197,8 @@ wts_for		LDT	screen_start
 
 ... colors memset subrutine
 memset_colors		LDX	#0
-mc_for			LDS	bg_color
-			STS	colors, X
+mc_for			LDCH	bg_color
+			STCH	colors, X
 			+TIX	#4096
 			JLT	mc_for
 			RSUB
@@ -258,8 +266,8 @@ equal_zero_or_greater_z	LDF	f_coor_z
 			. LDX	#0
 			. DIVR	T, X
 ccc			LDX	position
-			LDS	cur_color
-			STS	colors, X	... write color to colors matrix
+			LDCH	cur_color
+			STCH	colors, X	... write color to colors matrix
 			. J	calculate_cube_surface_return
 calculate_cube_surface_return
 			LDL	temp_L_2
@@ -551,13 +559,13 @@ screen_cols	WORD	64
 
 ... colors
 ... TODO: the name, change to: color_bg, color_f, etc.
-bg_color	WORD	X'00'	... color black
-f_color		WORD	X'CC'	... color green
-b_color		WORD	X'D7'	... color blue
-r_color		WORD	X'F0'	... color red
-l_color		WORD	X'F8'	... color orange
-u_color		WORD	X'FF'	... color white
-d_color		WORD	X'FC'	... color yellow
+bg_color	BYTE	X'00'	... color black
+f_color		BYTE	X'CC'	... color green
+b_color		BYTE	X'D7'	... color blue
+r_color		BYTE	X'F0'	... color red
+l_color		BYTE	X'F8'	... color orange
+u_color		BYTE	X'FF'	... color white
+d_color		BYTE	X'FC'	... color yellow
 
 int_negative_one	WORD	-1
 
@@ -570,7 +578,7 @@ original_point_y	RESW	1
 
 position		RESW	1
 
-cur_color		RESW	1
+cur_color		RESB	1
 
 
 .. matrices for colors and front pos

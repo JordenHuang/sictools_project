@@ -11,8 +11,8 @@
 ...  maybe need a temp_f_cube_{x, y, z} to easy swap those value to calculate the surface?
 
 ... Note at 2024/03/11
-... TODO: maybe calculate_sins_and_coss can be called only once in main_n, rather than each calculate surface
-... TODO: make sin and cos more accurate
+... Accomplished! TODO: maybe calculate_sins_and_coss can be called only once in main_n, rather than each calculate surface
+... Accomplished! TODO: make sin and cos more accurate
 
 ... rc for rotated cube
 rc	START	0
@@ -559,7 +559,8 @@ screen_cols	WORD	64
 
 ... colors
 ... TODO: the name, change to: color_bg, color_f, etc.
-bg_color	BYTE	X'00'	... color black
+. bg_color	BYTE	X'00'	... color black
+bg_color	BYTE	0b00000000	... color black
 f_color		BYTE	X'CC'	... color green
 b_color		BYTE	X'D7'	... color blue
 r_color		BYTE	X'F0'	... color red
@@ -580,13 +581,13 @@ position		RESW	1
 
 cur_color		RESB	1
 
-
+size			EQU	4096
 .. matrices for colors and front pos
-colors			RESB	4096
+colors			RESB	size
 ... the type is float
 ... WARNING: this matrix might need to add
 ... 6 when indexing
-f_check_front_pos	RESF	4096
+f_check_front_pos	RESF	size
 
 
 temp_L		RESW	1
@@ -647,8 +648,6 @@ f_temp		RESF	1
 f_temp_2	RESF	1
 f_negative_one	RESF	1
 f_x		RESF	1
-f_y		RESF	1
-f_z		RESF	1
 f_sqare_x	RESF	1
 f_term_1	RESF	1	... 
 f_term_2	RESF	1	... 多項式第二項

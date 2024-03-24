@@ -1,30 +1,167 @@
 . at 3/19, TODO: sin, cos function, don't forget to check variables name, some of them might have changed
 . at 3/24, add many subrutines, and make them more clear
+. at 3/25, Ready to add new functionality, TODO: add descritpion to say that the address needs to be modified
 
 .-- rc for rotated cube
 rc			START	0
 			JSUB	variable_init
-			JSUB	memset_f_ch_fnt_z
 
-	. JSUB	main
+			JSUB	main
 
 halt			J	halt
 
+
+main			STL	temp_L_3
+main_n			JSUB	memset
+			JSUB	calculate_sins_and_coss
+double_loop		LDF	f_half_cube_width
+			MULF	f_neg_one
+			STF	fy		... fx and fy is used as loop variables
+outer_loop		LDF	f_half_cube_width
+			MULF	f_neg_one
+			STF	fx
+inner_loop		LDF	fx
+			STF	f_cube_x
+			LDF	fy
+			STF	f_cube_y	... f_cube_y's value
+			LDF	f_half_cube_width
+			MULF	f_neg_one
+			STF	f_cube_z
+			. CLEAR	A
+			LDCH	color_f		... f side cube color
+			STCH	cur_color
+			JSUB	calculate_cube_surface	... f side cube
+
+			LDF	fx
+			STF	f_cube_x
+			LDF	fy
+			STF	f_cube_y
+			LDF	f_half_cube_width
+			STF	f_cube_z
+			. CLEAR	A
+			LDCH	color_b		... b side cube color
+			STCH	cur_color
+			JSUB	calculate_cube_surface	... b side cube
+
+			LDF	f_half_cube_width
+			MULF	f_neg_one
+			STF	f_cube_x
+			LDF	fy
+			STF	f_cube_y
+			LDF	fx
+			STF	f_cube_z
+			. CLEAR	A
+			LDCH	color_l		... l side color
+			STCH	cur_color
+			JSUB	calculate_cube_surface	... l side cube
+
+			LDF	f_half_cube_width
+			STF	f_cube_x
+			LDF	fy
+			STF	f_cube_y
+			LDF	fx
+			STF	f_cube_z
+			. CLEAR	A
+			LDCH	color_r		... r side color
+			STCH	cur_color
+			JSUB	calculate_cube_surface	... r side cube
+
+			LDF	fx
+			STF	f_cube_x
+			LDF	f_half_cube_width
+			MULF	f_neg_one
+			STF	f_cube_y
+			LDF	fy
+			STF	f_cube_z
+			. CLEAR	A
+			LDCH	color_d		... d side color
+			STCH	cur_color
+			JSUB	calculate_cube_surface	... d side cube
+
+			LDF	fx
+			STF	f_cube_x
+			LDF	f_half_cube_width
+			STF	f_cube_y
+			LDF	fy
+			STF	f_cube_z
+			. CLEAR	A
+			LDCH	color_u		... u side color
+			STCH	cur_color
+			JSUB	calculate_cube_surface	... u side cube
+
+			LDF	#5
+			DIVF	#10
+			ADDF	fx
+			STF	fx		... f_x += 0.5
+			COMPF	f_inner_loop_condition	... f_x <= cube_width/2
+			JLT	inner_loop
+			JEQ	inner_loop
+
+			LDF	#5
+			DIVF	#10
+			ADDF	fy
+			STF	fy		... fy += 0.5
+			COMPF	f_outer_loop_condition	... fy <= cube_width/2 
+			JLT	outer_loop
+			JEQ	outer_loop
+			JSUB	write_to_screen
+
+... add angle to rotate
+angle_a_add		LDF	f_rotate_speed_for_x
+			ADDF	f_angle_a
+			COMPF	pi
+			JLT	angle_b_add
+			SUBF	pi
+			SUBF	pi
+angle_b_add		STF	f_angle_a
+			LDF	f_rotate_speed_for_y
+			ADDF	f_angle_b
+			COMPF	pi
+			JLT	angle_c_add
+			SUBF	pi
+			SUBF	pi
+angle_c_add		STF	f_angle_b
+			LDF	f_rotate_speed_for_z
+			ADDF	f_angle_c
+			COMPF	pi
+			JLT	return_to_main_n
+			SUBF	pi
+			SUBF	pi
+return_to_main_n	STF	f_angle_c
+			J	main_n
+
+
+
+write_to_screen		STL	temp_L_4
+			LDX	#0
+wts_for			LDT	screen_start
+			LDCH	colors, X	... load the color to write
+			ADDR	X, T
+			STT	index
+			STCH	@index
+
+			+TIX	#SIZE
+			JLT	wts_for
+
+			LDL	temp_L_4
+			RSUB
+
 .==================================================
 
-... f_check_front_z memset subrutine
-memset_f_ch_fnt_z	LDX	#0
+.-- memset to zero, both f_check_front_z and colors
+memset			LDX	#0
 			LDT	#6
-			LDA	#0
-			+LDS	#SIZE
-			LDF	#1
-mfcfp_for		STF	f_check_front_z, X
-			ADDR	T, X
-			ADD	#1
-
-			COMPR	A, S
-			JLT	mfcfp_for
+			LDF	#0
+			CLEAR	A
+			LDCH	color_bg
+memset_for		STCH	colors, X		.-- write color_bg to colors
+			MULR	T, X
+			STF	f_check_front_z, X	.-- write 0 to f_check_front_z
+			DIVR	T, X
+			+TIX	#SIZE
+			JLT	memset_for
 			RSUB
+
 
 .-- subrutine for calculate cube surface
 calculate_cube_surface	STL	temp_L_2
@@ -46,42 +183,30 @@ calculate_cube_surface	STL	temp_L_2
 			FIX
 			STA	i_cube_z_result	.-- store it to i_cube_z_result
 
-
+			.-- Calculate the position on the screen
 			LDA	opy
 			SUB	i_cube_y_result
 			MUL	screen_cols
 			ADD	opx
 			ADD	i_cube_x_result	.-- index = (22-y)*100 + 50-(-x);
 
-			.-- Continue here (3/10) .--
 			STA	index
 			LDX	index
 			LDT	#6
 			MULR	T, X		.-- multiply 6 because f_check_front_z's type is float
 			LDF	f_check_front_z, X
 			COMPF	#0		.-- if (check_front_symbols[position]==0)
-			JEQ	equal_zero_or_greater_z
+			JEQ	equal_0_or_greater_z
 			COMPF	f_cube_z_result	.-- else (check_front_symbols[position] > z)
-			JGT	equal_zero_or_greater_z
-			J	calculate_cube_surface_return
-			. J	ccc	.-- only for test
-equal_zero_or_greater_z	LDF	f_cube_z_result
-			. LDT	#6
-			. MULR	T, X
+			JGT	equal_0_or_greater_z
+			J	calc_surface_return
+equal_0_or_greater_z	LDF	f_cube_z_result
 			STF	f_check_front_z, X
-			. SUBR	T, X
-			. DIVR	B, X		.-- divide 6 because colors matrix is type byte
-			. LDX	#0
-			. DIVR	T, X
-ccc			LDX	index
+			LDX	index
 			LDCH	cur_color
 			STCH	colors, X	.-- write color to colors matrix
-			. J	calculate_cube_surface_return
-calculate_cube_surface_return
-			LDL	temp_L_2
+calc_surface_return	LDL	temp_L_2
 			RSUB
-
-.==================== TODO: make comment more clear on the above lines ============
 
 .-- subrutine for calculate sins and coss to f_angle_{a, b, c}
 calculate_sins_and_coss	STL	temp_L		.-- store L to temp_L
@@ -312,7 +437,7 @@ variable_init		CLEAR	A
 
 			.-- set angle_* to negative pi
 			.-- FIXME: start with negative pi or positive pi?
-			. MULF	f_negative_one
+			. MULF	f_neg_one
 			STF	f_angle_a
 			STF	f_angle_b
 			STF	f_angle_c
@@ -357,16 +482,18 @@ variable_init		CLEAR	A
 .===================================================
 .===== Program parameters =====
 .===== customizable values =====
-screen_start		WORD	X'00A000'
+screen_start		WORD	X'0A0000'
 
 .-- It's better to let the rows and cols the same value
-screen_rows		WORD	64
-screen_cols		WORD	64
+screen_rows		WORD	100
+screen_cols		WORD	100
 
 .-- set SIZE to the result of screen_rows * screen_cols
-SIZE			EQU	4096
+. SIZE			EQU	4096
+. SIZE			EQU	6400
+SIZE			EQU	10000
 
-CUBE_WIDTH		EQU	24
+CUBE_WIDTH		EQU	50
 
 .-- colors (0biirrggbb, or 0x..)
 color_bg		BYTE	0x00	.-- black
@@ -400,11 +527,6 @@ index			RESW	1
 .-- variable that stores the current color to print
 cur_color		RESB	1
 
-.-- array (matrices) that stores values of colors and z positions
-colors			RESB	SIZE
-.-- type float
-f_check_front_z		RESF	SIZE
-
 .-- Temporary variables
 .-- temp_Ls store the link info of the last subrutine
 temp_L			RESW	1
@@ -428,9 +550,9 @@ f_cube_x		RESF	1
 f_cube_y		RESF	1
 f_cube_z		RESF	1
 .-- coordinate after calculating cube surface
-f_cube_x_result		RESW	1
-f_cube_y_result		RESW	1
-f_cube_z_result		RESW	1
+f_cube_x_result		RESF	1
+f_cube_y_result		RESF	1
+f_cube_z_result		RESF	1
 
 .-- Angle
 .-- current rotation angle
@@ -473,5 +595,9 @@ fy			RESF	1
 f_outer_loop_condition	RESF	1
 f_inner_loop_condition	RESF	1
 
+.-- array (matrices) that stores values of colors and z positions
+colors			RESB	SIZE
+.-- type float
+f_check_front_z		RESF	SIZE
 
 			END	rc

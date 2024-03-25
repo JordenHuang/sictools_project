@@ -13,6 +13,12 @@ halt			J	halt
 
 main			STL	temp_L_3
 main_n			JSUB	memset
+
+if_pause		JSUB	handle_input
+			LDA	pause_flag
+			COMP	#1
+			JEQ	if_pause
+
 			JSUB	calculate_sins_and_coss
 double_loop		LDF	f_half_cube_width
 			MULF	f_neg_one
@@ -27,7 +33,6 @@ inner_loop		LDF	fx
 			LDF	f_half_cube_width
 			MULF	f_neg_one
 			STF	f_cube_z
-			. CLEAR	A
 			LDCH	color_f		... f side cube color
 			STCH	cur_color
 			JSUB	calculate_cube_surface	... f side cube
@@ -38,7 +43,6 @@ inner_loop		LDF	fx
 			STF	f_cube_y
 			LDF	f_half_cube_width
 			STF	f_cube_z
-			. CLEAR	A
 			LDCH	color_b		... b side cube color
 			STCH	cur_color
 			JSUB	calculate_cube_surface	... b side cube
@@ -50,7 +54,6 @@ inner_loop		LDF	fx
 			STF	f_cube_y
 			LDF	fx
 			STF	f_cube_z
-			. CLEAR	A
 			LDCH	color_l		... l side color
 			STCH	cur_color
 			JSUB	calculate_cube_surface	... l side cube
@@ -61,7 +64,6 @@ inner_loop		LDF	fx
 			STF	f_cube_y
 			LDF	fx
 			STF	f_cube_z
-			. CLEAR	A
 			LDCH	color_r		... r side color
 			STCH	cur_color
 			JSUB	calculate_cube_surface	... r side cube
@@ -73,7 +75,6 @@ inner_loop		LDF	fx
 			STF	f_cube_y
 			LDF	fy
 			STF	f_cube_z
-			. CLEAR	A
 			LDCH	color_d		... d side color
 			STCH	cur_color
 			JSUB	calculate_cube_surface	... d side cube
@@ -84,7 +85,6 @@ inner_loop		LDF	fx
 			STF	f_cube_y
 			LDF	fy
 			STF	f_cube_z
-			. CLEAR	A
 			LDCH	color_u		... u side color
 			STCH	cur_color
 			JSUB	calculate_cube_surface	... u side cube
@@ -162,6 +162,90 @@ memset_for		STCH	colors, X		.-- write color_bg to colors
 			JLT	memset_for
 			RSUB
 
+keyboard_read_temp	RESB	1
+pause_flag		RESW	1
+handle_input		+LDCH	@keyboard_addr
+			STCH	keyboard_read_temp
+			CLEAR	A
+			+STCH	@keyboard_addr		.-- Clear the content of keyboard_addr
+			LDCH	keyboard_read_temp
+
+			.-- if it's SPACE
+			COMP	#32
+			JEQ	toggle_pause
+
+			.-- if it's q
+			COMP	#81
+			JEQ	halt
+
+			.-- if it's a
+			COMP	#65
+			JEQ	add_x_speed
+
+			.-- if it's s
+			COMP	#83
+			JEQ	add_y_speed
+
+			.-- if it's d
+			COMP	#68
+			JEQ	add_z_speed
+
+			.-- if it's z
+			COMP	#90
+			JEQ	minus_x_speed
+
+			.-- if it's x
+			COMP	#88
+			JEQ	minus_y_speed
+
+			.-- if it's c
+			COMP	#67
+			JEQ	minus_z_speed
+
+			J	handle_input_return
+toggle_pause		LDA	pause_flag
+			COMP	#0
+			JEQ	set_to_one
+			LDA	#0
+			STA	pause_flag
+			J	handle_input_return
+set_to_one		LDA	#1
+			STA	pause_flag
+			J	handle_input_return
+add_x_speed		LDF	#1
+			DIVF	#100
+			ADDF	f_rotate_speed_for_x
+			STF	f_rotate_speed_for_x
+			J	handle_input_return
+add_y_speed		LDF	#1
+			DIVF	#100
+			ADDF	f_rotate_speed_for_y
+			STF	f_rotate_speed_for_y
+			J	handle_input_return
+add_z_speed		LDF	#1
+			DIVF	#100
+			ADDF	f_rotate_speed_for_z
+			STF	f_rotate_speed_for_z
+			J	handle_input_return
+minus_x_speed		LDF	#1
+			DIVF	#100
+			MULF	f_neg_one
+			ADDF	f_rotate_speed_for_x
+			STF	f_rotate_speed_for_x
+			J	handle_input_return
+minus_y_speed		LDF	#1
+			DIVF	#100
+			MULF	f_neg_one
+			ADDF	f_rotate_speed_for_y
+			STF	f_rotate_speed_for_y
+			J	handle_input_return
+minus_z_speed		LDF	#1
+			DIVF	#100
+			MULF	f_neg_one
+			ADDF	f_rotate_speed_for_z
+			STF	f_rotate_speed_for_z
+			J	handle_input_return
+handle_input_return	RSUB
 
 .-- subrutine for calculate cube surface
 calculate_cube_surface	STL	temp_L_2
@@ -186,7 +270,7 @@ calculate_cube_surface	STL	temp_L_2
 			.-- Calculate the position on the screen
 			LDA	opy
 			SUB	i_cube_y_result
-			MUL	screen_cols
+			+MUL	#SCREEN_COLS
 			ADD	opx
 			ADD	i_cube_x_result	.-- index = (22-y)*100 + 50-(-x);
 
@@ -436,8 +520,7 @@ variable_init		CLEAR	A
 			STF	pi
 
 			.-- set angle_* to negative pi
-			.-- FIXME: start with negative pi or positive pi?
-			. MULF	f_neg_one
+			MULF	f_neg_one
 			STF	f_angle_a
 			STF	f_angle_b
 			STF	f_angle_c
@@ -461,10 +544,10 @@ variable_init		CLEAR	A
 			STF	f_half_cube_width
 
 			.-- set op{x, y} to half screen width and column
-			LDA	screen_rows
+			LDA	#SCREEN_ROWS
 			DIV	#2
 			STA	opy
-			LDA	screen_cols
+			LDA	#SCREEN_COLS
 			DIV	#2
 			STA	opx
 
@@ -483,17 +566,24 @@ variable_init		CLEAR	A
 .===== Program parameters =====
 .===== customizable values =====
 screen_start		WORD	X'0A0000'
+keyboard_addr		WORD	X'0C0000'
 
 .-- It's better to let the rows and cols the same value
-screen_rows		WORD	100
-screen_cols		WORD	100
+SCREEN_ROWS		EQU	128
+SCREEN_COLS		EQU	128
 
-.-- set SIZE to the result of screen_rows * screen_cols
-. SIZE			EQU	4096
-. SIZE			EQU	6400
-SIZE			EQU	10000
+.-- set SIZE to the result of SCREEN_ROWS * SCREEN_COLS
+SIZE			EQU	SCREEN_COLS * SCREEN_ROWS
 
 CUBE_WIDTH		EQU	50
+
+. BLACK			EQU	0x00	.-- black
+. GREEN			EQU	0xCC	.-- green
+. BLUE			EQU	0xD7	.-- blue
+. RED			EQU	0xF0	.-- red
+. ORANGE		EQU	0xF8	.-- orange
+. WHITE			EQU	0xFF	.-- white
+. YELLOW		EQU	0xFC	.-- yellow
 
 .-- colors (0biirrggbb, or 0x..)
 color_bg		BYTE	0x00	.-- black
